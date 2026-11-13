@@ -1,0 +1,10 @@
+{
+  "answer": "Não, não é possível colocar experiência em Python no currículo com base nas evidências fornecidas. O currículo menciona apenas \"Exercicios de consultas SQL em banco de dados\" e \"Interface web com HTML, CSS e JavaScript\", sem qualquer referência a Python. Como não há menção direta a atividades ou projetos realizados em Python, a inclusão de experiência nesse idioma não está sustentada por evidências do currículo. A experiência em Python não pode ser afirmada como realizada, pois não está presente nas informações fornecidas.",
+  "evidence": [
+    {
+      "page": 1,
+      "quote": "Exercicios de consultas SQL em banco de dados"
+    }
+  ],
+  "mode": "ollama"
+}

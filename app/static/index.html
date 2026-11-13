@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Comparação de currículo com os requisitos de uma vaga.">
+  <title>VagaMatch AI</title>
+  <link rel="stylesheet" href="/static/styles.css">
+  <script src="/static/app.js" defer></script>
+</head>
+<body>
+  <main>
+    <h1>VagaMatch AI</h1>
+    <p>Envie seu currículo e os requisitos da vaga para comparar.</p>
+    <p id="config-message" class="notice" role="status">Verificando configuração da IA…</p>
+    <form id="analysis-form">
+      <div class="field">
+        <label for="resume">Currículo em PDF</label>
+        <input id="resume" name="resume" type="file" accept="application/pdf,.pdf" aria-describedby="file-help" required>
+        <small id="file-help">Até 5 MB e 10 páginas. O PDF precisa ter texto selecionável.</small>
+      </div>
+      <div class="field">
+        <label for="job">Descrição da vaga</label>
+        <textarea id="job" name="job_description" rows="6" minlength="3" maxlength="12000" aria-describedby="job-help" required placeholder="Java e POO&#10;SQL e PostgreSQL&#10;Python e FastAPI"></textarea>
+        <small id="job-help">Pode colar a descrição completa. A IA identifica até 30 requisitos.</small>
+      </div>
+      <div class="buttons">
+        <button id="submit" class="primary" type="submit" disabled>Analisar com IA</button>
+        <button type="button" id="clear">Limpar</button>
+      </div>
+      <details class="example">
+        <summary>Testar com um exemplo</summary>
+        <p><a href="/static/curriculo-exemplo.pdf" download>Baixar currículo fictício</a>, selecionar o arquivo acima e <button type="button" id="example" class="link-button">preencher a vaga de exemplo</button>.</p>
+      </details>
+    </form>
+    <p id="message" role="status" aria-live="polite"></p>
+    <section id="results" hidden aria-labelledby="results-title">
+      <h2 id="results-title" tabindex="-1">Resultado da comparação</h2>
+      <p id="result-notice" class="result-notice"></p>
+      <p id="summary"></p>
+      <div class="filter">
+        <label for="status-filter">Mostrar:</label>
+        <select id="status-filter">
+          <option value="all">Todos os requisitos</option>
+          <option value="atendido">Atendidos</option>
+          <option value="parcialmente_atendido">Parcialmente atendidos</option>
+          <option value="nao_encontrado">Não encontrados</option>
+        </select>
+      </div>
+      <p id="empty-filter" hidden>Nenhum requisito nesta categoria.</p>
+      <div id="result-list"></div>
+      <form id="question-form" hidden>
+        <h3>Perguntar à IA</h3>
+        <label for="question">Sua pergunta sobre o currículo e a vaga</label>
+        <textarea id="question" name="question" rows="2" minlength="3" maxlength="1000" required placeholder="O que posso explicar melhor no meu currículo?"></textarea>
+        <button type="submit" id="ask-submit" class="primary">Perguntar</button>
+        <p id="ask-message" role="status" aria-live="polite"></p>
+        <div id="answer" aria-live="polite"></div>
+      </form>
+    </section>
+    <footer id="privacy-message">Projeto de Eliese. Sem histórico de currículos e sem nota de contratação.</footer>
+  </main>
+</body>
+</html>

@@ -1,0 +1,37 @@
+{
+  "mode": "ollama",
+  "notice": "Análise feita por IA. Confira as evidências; a IA pode errar. Não encontrado significa ausência de evidência no currículo, não ausência de conhecimento.",
+  "results": [
+    {
+      "requirement": "Conhecimento em Java e POO",
+      "status": "atendido",
+      "evidence": [
+        {
+          "page": 1,
+          "quote": "Projeto academico em Java e programacao orientada a objetos."
+        }
+      ],
+      "explanation": "A menção a 'Java' e 'programacao orientada a objetos' no projeto acadêmico atende ao requisito 'Conhecimento em Java e POO'.",
+      "suggestion": "Se for verdadeiro, detalhe um projeto em que usou esse conhecimento, sua contribuição e um resultado verificável."
+    },
+    {
+      "requirement": "SQL e PostgreSQL",
+      "status": "parcialmente_atendido",
+      "evidence": [
+        {
+          "page": 1,
+          "quote": "Exercicios de consultas SQL em banco de dados."
+        }
+      ],
+      "explanation": "A menção a 'exercicios de consultas SQL' indica conhecimento em SQL, mas não há menção a PostgreSQL.",
+      "suggestion": "Revise o que falta comprovar e acrescente somente exemplos de experiências que você realmente possui."
+    },
+    {
+      "requirement": "Python e FastAPI",
+      "status": "nao_encontrado",
+      "evidence": [],
+      "explanation": "Não há menção a Python ou FastAPI no currículo.",
+      "suggestion": "Se você possui essa experiência, inclua um exemplo real. Caso contrário, considere estudar o requisito e fazer um projeto antes de adicioná-lo."
+    }
+  ]
+}

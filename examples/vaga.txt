@@ -1,0 +1,3 @@
+Conhecimento em Java e POO
+SQL e PostgreSQL
+Python e FastAPI
