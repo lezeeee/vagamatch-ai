@@ -1,9 +1,9 @@
 <!doctype html>
-<html lang="pt-BR">
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Comparação de currículo com os requisitos de uma vaga.">
+  <meta name="description" content="A basic AI resume matcher with local OCR. No database or saved history.">
   <title>VagaMatch AI</title>
   <link rel="stylesheet" href="/static/styles.css">
   <script src="/static/app.js" defer></script>
@@ -11,54 +11,57 @@
 <body>
   <main>
     <h1>VagaMatch AI</h1>
-    <p>Envie seu currículo e os requisitos da vaga para comparar.</p>
-    <p id="config-message" class="notice" role="status">Verificando configuração da IA…</p>
+    <p>Compare your resume with a job description.</p>
+    <p id="config-message" class="notice" role="status">Checking local AI…</p>
     <form id="analysis-form">
       <div class="field">
-        <label for="resume">Currículo em PDF</label>
-        <input id="resume" name="resume" type="file" accept="application/pdf,.pdf" aria-describedby="file-help" required>
-        <small id="file-help">Até 5 MB e 10 páginas. O PDF precisa ter texto selecionável.</small>
+        <label for="resume">Resume</label>
+        <input id="resume" name="resume" type="file" accept="application/pdf,image/png,image/jpeg,.pdf,.png,.jpg,.jpeg" aria-describedby="file-help" required>
+        <small id="file-help">PDF, PNG or JPG up to 5 MB. Scanned PDFs and images are read with local OCR.</small>
       </div>
       <div class="field">
-        <label for="job">Descrição da vaga</label>
-        <textarea id="job" name="job_description" rows="6" minlength="3" maxlength="12000" aria-describedby="job-help" required placeholder="Java e POO&#10;SQL e PostgreSQL&#10;Python e FastAPI"></textarea>
-        <small id="job-help">Pode colar a descrição completa. A IA identifica até 30 requisitos.</small>
+        <label for="job">Job description</label>
+        <textarea id="job" name="job_description" rows="6" minlength="3" maxlength="12000" aria-describedby="job-help" required placeholder="Java and object-oriented programming&#10;SQL and PostgreSQL&#10;Python and FastAPI"></textarea>
+        <small id="job-help">Paste the responsibilities and requirements. English and Portuguese documents are supported.</small>
       </div>
       <div class="buttons">
-        <button id="submit" class="primary" type="submit" disabled>Analisar com IA</button>
-        <button type="button" id="clear">Limpar</button>
+        <button id="submit" class="primary" type="submit" disabled>Analyze resume</button>
+        <button type="button" id="clear">Clear</button>
       </div>
       <details class="example">
-        <summary>Testar com um exemplo</summary>
-        <p><a href="/static/curriculo-exemplo.pdf" download>Baixar currículo fictício</a>, selecionar o arquivo acima e <button type="button" id="example" class="link-button">preencher a vaga de exemplo</button>.</p>
+        <summary>Try an example</summary>
+        <p><a href="/static/curriculo-exemplo.pdf" download="sample-resume.pdf">Download the fictional resume</a>, select it above and <button type="button" id="example" class="link-button">fill the sample job</button>.</p>
       </details>
     </form>
-    <p id="message" role="status" aria-live="polite"></p>
+    <p id="processing" role="status" aria-live="polite" hidden></p>
+    <p id="message" role="alert"></p>
     <section id="results" hidden aria-labelledby="results-title">
-      <h2 id="results-title" tabindex="-1">Resultado da comparação</h2>
+      <h2 id="results-title" tabindex="-1">Comparison results</h2>
+      <p id="reading-info" class="result-notice"></p>
       <p id="result-notice" class="result-notice"></p>
+      <p id="warnings" class="result-notice" hidden></p>
       <p id="summary"></p>
       <div class="filter">
-        <label for="status-filter">Mostrar:</label>
+        <label for="status-filter">Show:</label>
         <select id="status-filter">
-          <option value="all">Todos os requisitos</option>
-          <option value="atendido">Atendidos</option>
-          <option value="parcialmente_atendido">Parcialmente atendidos</option>
-          <option value="nao_encontrado">Não encontrados</option>
+          <option value="all">All requirements</option>
+          <option value="met">Met</option>
+          <option value="partial">Partially met</option>
+          <option value="not_found">Not found</option>
         </select>
       </div>
-      <p id="empty-filter" hidden>Nenhum requisito nesta categoria.</p>
+      <p id="empty-filter" hidden>No requirements in this category.</p>
       <div id="result-list"></div>
       <form id="question-form" hidden>
-        <h3>Perguntar à IA</h3>
-        <label for="question">Sua pergunta sobre o currículo e a vaga</label>
-        <textarea id="question" name="question" rows="2" minlength="3" maxlength="1000" required placeholder="O que posso explicar melhor no meu currículo?"></textarea>
-        <button type="submit" id="ask-submit" class="primary">Perguntar</button>
+        <h3>Ask about this resume</h3>
+        <label for="question">Your question</label>
+        <textarea id="question" name="question" rows="2" minlength="3" maxlength="1000" required placeholder="What could I explain more clearly?"></textarea>
+        <button type="submit" id="ask-submit" class="primary">Ask AI</button>
         <p id="ask-message" role="status" aria-live="polite"></p>
         <div id="answer" aria-live="polite"></div>
       </form>
     </section>
-    <footer id="privacy-message">Projeto de Eliese. Sem histórico de currículos e sem nota de contratação.</footer>
+    <footer id="privacy-message">A basic AI portfolio project by Eliese. No database, saved history or hiring score. Files are processed locally.</footer>
   </main>
 </body>
 </html>

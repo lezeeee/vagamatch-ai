@@ -1,0 +1,43 @@
+{
+  "mode": "ollama",
+  "notice": "AI-assisted comparison. Review the excerpts. Not found means no verified evidence in this resume, not a lack of ability.",
+  "results": [
+    {
+      "requirement": "Knowledge of Java and object-oriented programming",
+      "status": "met",
+      "evidence": [
+        {
+          "page": 1,
+          "quote": "Academic project using Java and object-oriented programming."
+        }
+      ],
+      "explanation": "The AI found resume evidence for this requirement. Check the excerpts and the requested level.",
+      "suggestion": "If accurate, add your contribution and a concrete result from a real project."
+    },
+    {
+      "requirement": "SQL and PostgreSQL",
+      "status": "partial",
+      "evidence": [
+        {
+          "page": 1,
+          "quote": "SQL query exercises for a database course."
+        }
+      ],
+      "explanation": "The AI found evidence for part of this requirement. Check what is still missing.",
+      "suggestion": "Clarify the missing part using experience you actually have."
+    },
+    {
+      "requirement": "Python and FastAPI",
+      "status": "not_found",
+      "evidence": [],
+      "explanation": "No positive resume evidence was selected for this requirement.",
+      "suggestion": "Add a real example only if you have this experience. Otherwise, consider a learning project first."
+    }
+  ],
+  "warnings": [],
+  "reading": {
+    "pages": 1,
+    "ocr_pages": []
+  },
+  "elapsed_seconds": 2.9
+}

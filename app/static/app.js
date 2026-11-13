@@ -8,29 +8,29 @@ const statusFilter = document.querySelector('#status-filter');
 const questionForm = document.querySelector('#question-form');
 const answerBox = document.querySelector('#answer');
 const askMessage = document.querySelector('#ask-message');
-let activeMode = 'ollama';
+const processing = document.querySelector('#processing');
+const labels = {met: 'Met', partial: 'Partially met', not_found: 'Not found'};
 let apiReady = false;
-const labels = {atendido: 'Atendido', parcialmente_atendido: 'Parcialmente atendido', nao_encontrado: 'Não encontrado'};
 
 function element(tag, text, className) {
   const node = document.createElement(tag);
-  if (text !== undefined) node.textContent = text; // PDF and job text are always rendered as text, never HTML.
+  if (text !== undefined) node.textContent = text;
   if (className) node.className = className;
   return node;
 }
 function clearResults() {
   results.hidden = true;
   document.querySelector('#result-list').replaceChildren();
-  document.querySelector('#summary').replaceChildren();
-  document.querySelector('#result-notice').textContent = '';
+  document.querySelector('#summary').textContent = '';
+  document.querySelector('#warnings').textContent = '';
+  document.querySelector('#warnings').hidden = true;
   document.querySelector('#empty-filter').hidden = true;
   statusFilter.value = 'all';
-  questionForm.hidden = true;
   questionForm.reset();
+  questionForm.hidden = true;
   answerBox.replaceChildren();
   askMessage.textContent = '';
 }
-
 function filterResults() {
   let visible = 0;
   for (const card of document.querySelectorAll('.result-card')) {
@@ -39,15 +39,24 @@ function filterResults() {
   }
   document.querySelector('#empty-filter').hidden = visible > 0;
 }
+function addEvidence(target, evidence) {
+  for (const proof of evidence) {
+    const quote = element('blockquote', proof.quote);
+    quote.append(element('cite', `Resume · page ${proof.page}`));
+    target.append(quote);
+  }
+}
 function showAnalysis(data) {
   document.querySelector('#result-notice').textContent = data.notice;
+  const reading = data.reading;
+  document.querySelector('#reading-info').textContent = `Read ${reading.pages} page(s). Completed in ${data.elapsed_seconds}s.` +
+    (reading.ocr_pages.length ? ` OCR used on page(s) ${reading.ocr_pages.join(', ')}. Check the excerpts for recognition errors.` : '');
+  const warnings = document.querySelector('#warnings');
+  warnings.textContent = (data.warnings || []).join(' ');
+  warnings.hidden = !warnings.textContent;
+  document.querySelector('#summary').textContent = Object.entries(labels).map(([status, label]) =>
+    `${label}: ${data.results.filter(item => item.status === status).length}`).join(' | ');
   const list = document.querySelector('#result-list');
-  const counts = [];
-  for (const [status, label] of Object.entries(labels)) {
-    const count = data.results.filter(item => item.status === status).length;
-    counts.push(`${label}: ${count}`);
-  }
-  document.querySelector('#summary').textContent = counts.join(' | ');
   for (const item of data.results) {
     const card = element('details', undefined, 'result-card');
     card.dataset.status = item.status;
@@ -55,116 +64,96 @@ function showAnalysis(data) {
     top.append(element('strong', item.requirement), element('span', labels[item.status], `badge ${item.status}`));
     const body = element('div', undefined, 'result-body');
     body.append(element('p', item.explanation));
-    for (const proof of item.evidence) {
-      const quote = element('blockquote', proof.quote);
-      quote.append(element('cite', `Currículo · página ${proof.page}`));
-      body.append(quote);
-    }
-    if (item.evidence.length === 0) body.append(element('p', 'Nenhum trecho do currículo encontrado.'));
-    body.append(element('p', `Sugestão: ${item.suggestion}`));
+    addEvidence(body, item.evidence);
+    if (!item.evidence.length) body.append(element('p', 'No verified positive excerpt was selected.'));
+    body.append(element('p', `Suggestion: ${item.suggestion}`));
     card.append(top, body);
     list.append(card);
   }
   results.hidden = false;
-  questionForm.hidden = !['openai', 'ollama'].includes(data.mode);
+  questionForm.hidden = false;
   document.querySelector('#results-title').focus();
 }
-fileInput.addEventListener('change', () => {
-  clearResults();
-  message.textContent = '';
-});
+function setBusy(busy) {
+  document.querySelectorAll('form input, form textarea, form button').forEach(control => control.disabled = busy);
+  if (!busy) submit.disabled = !apiReady;
+}
+function errorMessage(data) {
+  const prefix = {document: 'Document', ai: 'AI service', job: 'Job description', ocr: 'OCR setup'}[data.stage];
+  const detail = typeof data.detail === 'string' ? data.detail : 'The request could not be completed.';
+  return prefix ? `${prefix}: ${detail}` : detail;
+}
+async function send(path, payload, label) {
+  const started = Date.now();
+  processing.hidden = false;
+  const update = () => processing.textContent = `${label}… ${Math.floor((Date.now() - started) / 1000)}s. Scanned files may take a few extra seconds.`;
+  update();
+  const interval = setInterval(update, 1000);
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 90000);
+  try {
+    const response = await fetch(path, {method: 'POST', body: payload, signal: controller.signal, cache: 'no-store'});
+    const data = await response.json();
+    if (!response.ok) throw new Error(errorMessage(data));
+    return data;
+  } catch (error) {
+    if (error.name === 'AbortError') throw new Error('The request timed out. Try a shorter job description.');
+    if (error instanceof TypeError) throw new Error('Cannot reach the local app. Make sure it is running.');
+    throw error;
+  } finally {
+    clearInterval(interval);
+    clearTimeout(timeout);
+    processing.hidden = true;
+  }
+}
+fileInput.addEventListener('change', () => { clearResults(); message.textContent = ''; });
 jobInput.addEventListener('input', clearResults);
 statusFilter.addEventListener('change', filterResults);
 document.querySelector('#example').addEventListener('click', () => {
-  jobInput.value = 'Conhecimento em Java e POO\nSQL e PostgreSQL\nPython e FastAPI';
+  jobInput.value = 'Knowledge of Java and object-oriented programming\nSQL and PostgreSQL\nPython and FastAPI';
   clearResults();
 });
 document.querySelector('#clear').addEventListener('click', () => {
-  form.reset();
-  fileInput.dispatchEvent(new Event('change'));
-  jobInput.focus();
+  form.reset(); clearResults(); message.textContent = ''; jobInput.focus();
 });
 form.addEventListener('submit', async event => {
   event.preventDefault();
   clearResults();
   message.textContent = '';
   const file = fileInput.files[0];
-  if (!file || file.size > 5 * 1024 * 1024) {
-    message.textContent = 'Selecione um PDF de até 5 MB.';
-    return;
-  }
+  if (!file || file.size > 5 * 1024 * 1024) { message.textContent = 'Select a PDF, PNG or JPG up to 5 MB.'; return; }
   const payload = new FormData(form);
-  // Freeze the inputs so a result always belongs to the displayed submission.
-  const controls = [...form.querySelectorAll('input, textarea, button')];
-  controls.forEach(control => control.disabled = true);
-  submit.textContent = activeMode === 'demo' ? 'Comparando…' : 'Analisando com IA…';
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), activeMode === 'ollama' ? 190000 : 60000);
-  try {
-    const response = await fetch('/api/analyze', {method: 'POST', body: payload, signal: controller.signal, cache: 'no-store'});
-    const data = await response.json();
-    if (!response.ok) throw new Error(typeof data.detail === 'string' ? data.detail : 'Não foi possível analisar. Confira o formulário.');
-    showAnalysis(data);
-  } catch (error) {
-    message.textContent = error.name === 'AbortError' ? 'A análise demorou demais. Tente um PDF menor.' : (error instanceof TypeError ? 'Não foi possível conectar ao servidor. Verifique se ele está em execução.' : error.message);
-  } finally {
-    clearTimeout(timeout);
-    controls.forEach(control => control.disabled = false);
-    submit.textContent = activeMode === 'demo' ? 'Comparar sem IA' : 'Analisar com IA';
-    submit.disabled = !apiReady;
-  }
+  setBusy(true);
+  submit.textContent = 'Analyzing…';
+  try { showAnalysis(await send('/api/analyze', payload, 'Reading and analyzing the resume')); }
+  catch (error) { message.textContent = error.message; }
+  finally { setBusy(false); submit.textContent = 'Analyze resume'; }
 });
-
 questionForm.addEventListener('submit', async event => {
   event.preventDefault();
   const payload = new FormData(form);
   payload.append('question', document.querySelector('#question').value);
-  const controls = [...document.querySelectorAll('form input, form textarea, form button')];
-  controls.forEach(control => control.disabled = true);
-  const askSubmit = document.querySelector('#ask-submit');
-  askSubmit.textContent = 'Respondendo…';
+  setBusy(true);
   askMessage.textContent = '';
   answerBox.replaceChildren();
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), activeMode === 'ollama' ? 190000 : 60000);
+  const askSubmit = document.querySelector('#ask-submit');
+  askSubmit.textContent = 'Answering…';
   try {
-    const response = await fetch('/api/ask', {method: 'POST', body: payload, signal: controller.signal, cache: 'no-store'});
-    const data = await response.json();
-    if (!response.ok) throw new Error(typeof data.detail === 'string' ? data.detail : 'Não foi possível responder. Tente novamente.');
+    const data = await send('/api/ask', payload, 'Answering your question');
     answerBox.append(element('p', data.answer));
-    for (const proof of data.evidence) {
-      const quote = element('blockquote', proof.quote);
-      quote.append(element('cite', `Currículo · página ${proof.page}`));
-      answerBox.append(quote);
-    }
-  } catch (error) {
-    askMessage.textContent = error.name === 'AbortError' ? 'A resposta demorou demais. Tente novamente.' : (error instanceof TypeError ? 'Não foi possível conectar ao servidor.' : error.message);
-  } finally {
-    clearTimeout(timeout);
-    controls.forEach(control => control.disabled = false);
-    askSubmit.textContent = 'Perguntar';
-    submit.disabled = !apiReady;
-  }
+    addEvidence(answerBox, data.evidence);
+  } catch (error) { askMessage.textContent = error.message; }
+  finally { setBusy(false); askSubmit.textContent = 'Ask AI'; }
 });
-
 async function loadConfiguration() {
   const notice = document.querySelector('#config-message');
   try {
     const response = await fetch('/api/health', {cache: 'no-store'});
-    if (!response.ok) throw new Error('Configuração indisponível.');
+    if (!response.ok) throw new Error('Unavailable');
     const config = await response.json();
-    activeMode = config.mode;
     apiReady = config.ready === true;
     notice.textContent = config.message;
-    document.querySelector('#privacy-message').textContent = activeMode === 'ollama'
-      ? 'Projeto de Eliese. A IA roda neste computador, sem enviar o currículo a serviços externos. Sem histórico de currículos e sem nota de contratação.'
-      : activeMode === 'demo' ? 'Projeto de Eliese. Modo demonstração sem IA, sem histórico de currículos e sem nota de contratação.'
-      : 'Projeto de Eliese. No modo OpenAI, o texto do currículo e a vaga são enviados à OpenAI. Sem histórico de currículos e sem nota de contratação.';
-    submit.textContent = activeMode === 'demo' ? 'Comparar sem IA' : 'Analisar com IA';
     submit.disabled = !apiReady;
-  } catch {
-    notice.textContent = 'Servidor indisponível. Inicie a aplicação e atualize a página.';
-    submit.disabled = true;
-  }
+  } catch { notice.textContent = 'The local app is unavailable. Start it and refresh this page.'; submit.disabled = true; }
 }
 loadConfiguration();

@@ -37,8 +37,8 @@ def find_runtime() -> Path:
         if candidate.is_file():
             return candidate
     if os.name != 'nt':
-        raise RuntimeError('Instale o Ollama pelo site oficial e execute este script novamente: https://ollama.com/download')
-    print('Baixando o Ollama oficial (aproximadamente 1,6 GB). Isso acontece uma vez.', flush=True)
+        raise RuntimeError('Install Ollama from https://ollama.com/download, then run this launcher again.')
+    print('Downloading the official Ollama runtime (about 1.6 GB). This is a one-time download.', flush=True)
     archive = RUNTIME / 'ollama-windows-amd64.zip'
     url = f'https://github.com/ollama/ollama/releases/download/v{OLLAMA_VERSION}/ollama-windows-amd64.zip'
     urllib.request.urlretrieve(url, archive)
@@ -46,13 +46,13 @@ def find_runtime() -> Path:
         checksum = hashlib.file_digest(downloaded, 'sha256').hexdigest()
     if checksum != ARCHIVE_HASH:
         archive.unlink()
-        raise RuntimeError('O download não passou na conferência de integridade. Tente novamente.')
+        raise RuntimeError('The runtime download failed its integrity check. Please try again.')
     target = RUNTIME / 'ollama'
     target.mkdir(parents=True, exist_ok=True)
     with zipfile.ZipFile(archive) as bundle:
         for entry in bundle.infolist():
             if not (target / entry.filename).resolve().is_relative_to(target.resolve()):
-                raise RuntimeError('Caminho inválido no pacote do Ollama.')
+                raise RuntimeError('An invalid path was found in the Ollama archive.')
         bundle.extractall(target)
     archive.unlink()
     return target / 'ollama.exe'
@@ -83,16 +83,29 @@ def ensure_model_server():
             return
         except (OSError, ValueError):
             time.sleep(.5)
-    raise RuntimeError('O Ollama não iniciou. Veja .runtime/ollama.log.')
+    raise RuntimeError('Ollama did not start. See .runtime/ollama.log.')
 
 
 def ensure_model():
     names = {model['name'] for model in local_json('/api/tags').get('models', [])}
     if MODEL not in names:
-        print('Baixando o modelo de IA (aproximadamente 2,5 GB). Aguarde; isso acontece uma vez.', flush=True)
+        print('Downloading the local AI model (about 2.5 GB). This is a one-time download.', flush=True)
         result = local_json('/api/pull', {'model': MODEL, 'stream': False}, timeout=1800)
         if result.get('status') != 'success':
-            raise RuntimeError('O download do modelo não terminou. Execute novamente para continuar.')
+            raise RuntimeError('The model download did not finish. Run this launcher again to continue.')
+
+
+def app_is_running():
+    from app.config import APP_VERSION
+    try:
+        opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+        with opener.open('http://127.0.0.1:8000/openapi.json', timeout=2) as response:
+            info = json.load(response).get('info', {})
+    except (OSError, ValueError):
+        return False
+    if info.get('title') == 'VagaMatch AI' and info.get('version') == APP_VERSION:
+        return True
+    raise RuntimeError('Another app or an older VagaMatch version is using port 8000. Close it and run this launcher again.')
 
 
 def main():
@@ -100,16 +113,24 @@ def main():
     RUNTIME.mkdir(exist_ok=True)
     python = ROOT / ('.venv/Scripts/python.exe' if os.name == 'nt' else '.venv/bin/python')
     if not python.exists():
-        print('Criando o ambiente Python...', flush=True)
+        print('Creating the Python environment...', flush=True)
         venv.create(ROOT / '.venv', with_pip=True)
-    check = subprocess.run([str(python), '-c', 'import fastapi, uvicorn, pypdf, python_multipart, openai, httpx2, dotenv'],
+    check = subprocess.run([str(python), '-c', 'import fastapi, uvicorn, pypdf, python_multipart, httpx2, PIL, pypdfium2, rapidocr_onnxruntime'],
                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     if check.returncode:
         subprocess.run([str(python), '-m', 'pip', 'install', '-r', str(ROOT / 'requirements.txt')], check=True)
+    print('Preparing the local English/Portuguese OCR model...', flush=True)
+    subprocess.run([str(python), '-c', 'from app.ocr_model import ensure_ocr_model; ensure_ocr_model()'], check=True)
     ensure_model_server()
     ensure_model()
-    environment = {**os.environ, 'VAGAMATCH_MODE': 'ollama', 'VAGAMATCH_ALLOW_PAID_API': 'false'}
-    print('IA local pronta. Abra http://127.0.0.1:8000 — Ctrl+C encerra o site.', flush=True)
+    if app_is_running():
+        print('VagaMatch AI is already running. Open http://127.0.0.1:8000 or refresh the page.', flush=True)
+        return 0
+    print('Loading local AI before starting the app...', flush=True)
+    local_json('/api/generate', {'model': MODEL, 'stream': False, 'keep_alive': '20m',
+                                'options': {'num_ctx': 8192}}, timeout=120)
+    environment = dict(os.environ)
+    print('Ready. Open http://127.0.0.1:8000 — Ctrl+C stops the app.', flush=True)
     try:
         return subprocess.call([str(python), '-m', 'uvicorn', 'app.main:app', '--host', '127.0.0.1',
                                 '--port', '8000', '--no-access-log'], env=environment)
@@ -121,5 +142,5 @@ if __name__ == '__main__':
     try:
         raise SystemExit(main())
     except (OSError, RuntimeError, subprocess.SubprocessError) as error:
-        print(f'Não foi possível iniciar: {error}', file=sys.stderr)
+        print(f'Could not start VagaMatch AI: {error}', file=sys.stderr)
         raise SystemExit(1)

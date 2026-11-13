@@ -40,15 +40,15 @@ endobj
 endobj
 6 0 obj
 <<
-/Length 296
+/Length 289
 >>
 stream
 BT /F1 12 Tf 45 780 Td 22 TL
-(CANDIDATA FICTICIA - EXEMPLO DIDATICO) Tj T*
-(Estudante de Engenharia de Software.) Tj T*
-(Projeto academico em Java e programacao orientada a objetos.) Tj T*
-(Exercicios de consultas SQL em banco de dados.) Tj T*
-(Interface web com HTML, CSS e JavaScript.) Tj T*
+(FICTIONAL RESUME - DEMONSTRATION ONLY) Tj T*
+(Software Engineering student.) Tj T*
+(Academic project using Java and object-oriented programming.) Tj T*
+(SQL query exercises for a database course.) Tj T*
+(Web interface using HTML, CSS and JavaScript.) Tj T*
 ET
 endstream
 endobj
@@ -68,5 +68,5 @@ trailer
 /Info 1 0 R
 >>
 startxref
-711
+704
 %%EOF

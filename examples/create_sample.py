@@ -8,11 +8,11 @@ from pypdf.generic import DecodedStreamObject, DictionaryObject, NameObject
 
 def make_pdf(lines: list[str] | None = None) -> bytes:
     lines = lines if lines is not None else [
-        'CANDIDATA FICTICIA - EXEMPLO DIDATICO',
-        'Estudante de Engenharia de Software.',
-        'Projeto academico em Java e programacao orientada a objetos.',
-        'Exercicios de consultas SQL em banco de dados.',
-        'Interface web com HTML, CSS e JavaScript.',
+        'FICTIONAL RESUME - DEMONSTRATION ONLY',
+        'Software Engineering student.',
+        'Academic project using Java and object-oriented programming.',
+        'SQL query exercises for a database course.',
+        'Web interface using HTML, CSS and JavaScript.',
     ]
     writer = PdfWriter()
     page = writer.add_blank_page(width=595, height=842)

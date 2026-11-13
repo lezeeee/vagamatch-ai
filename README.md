@@ -1,138 +1,141 @@
 # VagaMatch AI
 
-Projeto de portfólio de **Eliese** ([lezeeee](https://github.com/lezeeee)). Compara currículo PDF e descrição de vaga usando IA, mostra requisitos com evidências e permite fazer perguntas sobre o currículo.
+A basic AI-powered resume matcher built with **Python, FastAPI and local inference**.
+Upload a resume, paste a job description, and review requirements alongside excerpts from the resume.
 
-Código: [lezeeee/vagamatch-ai](https://github.com/lezeeee/vagamatch-ai).
+**No database. No saved history. No paid API or API key.**
 
-**Modo padrão: IA local gratuita com Ollama + Qwen3 4B Instruct.** Não exige chave, cartão ou conta de API. Não envia currículos para serviços externos. A alternativa paga da OpenAI continua opcional e bloqueada sem configuração explícita.
+> This is a small portfolio project, not a recruitment scoring system. It does not predict hiring outcomes or verify that a resume is truthful.
 
-## Iniciar no Windows
+![VagaMatch AI with a fictional resume](docs/screenshot.png)
 
-Pré-requisito: **Python 3.11**. Abra **`iniciar.cmd`** ou execute, nesta pasta:
+## Features
+
+- Digital PDFs, scanned PDFs, PNG and JPG resumes.
+- Automatic local OCR when a page has no usable text.
+- Requirements grouped as **Met**, **Partially met** or **Not found**.
+- Original excerpts with page numbers, assembled by the server from source references.
+- Short follow-up questions about the resume and job.
+- An English interface, with English or Portuguese input documents.
+- Document errors distinguished from AI service errors.
+
+## Quick start
+
+**Requirements:** Python 3.11, internet access for the first setup, and enough memory and disk space for a local language model.
+
+On Windows, open `iniciar.cmd` or run this command from the project folder:
 
 ```powershell
 py -3.11 iniciar.py
 ```
 
-Depois abra **http://127.0.0.1:8000**. Ctrl+C encerra o site.
+Open **http://127.0.0.1:8000**. Press Ctrl+C in the terminal to stop the app.
 
-O inicializador cria o ambiente Python e instala as dependências quando necessário. Se não encontrar o Ollama, baixa o pacote oficial, confere o SHA-256 e o extrai em `.runtime/`, ignorado pelo Git. Na primeira execução também baixa o modelo `qwen3:4b-instruct-2507-q4_K_M`. São aproximadamente 1,6 GB do pacote de runtime e 2,5 GB do modelo, além de espaço para a extração. As próximas execuções reutilizam os arquivos.
+The launcher prepares `.venv`, installs dependencies, and starts Ollama locally. On the first run it downloads the official Ollama runtime (about 1.6 GB), the language model (about 2.5 GB), and a Latin-script OCR recognition model (about 9 MB). Additional disk space is needed for extraction. Later runs reuse these files. The model is loaded before the app starts to reduce the first-analysis delay.
 
-**Neste computador, o runtime, o modelo e as dependências já foram preparados.** O inicializador reutiliza o runtime e os modelos da pasta de trabalho da sessão. Em outro computador, usa `.runtime/` ou uma instalação existente do Ollama. Não é necessário levar os arquivos grandes ao GitHub.
+Runtime files and model weights are excluded from Git. The launcher verifies the runtime and OCR model checksums and disables Ollama cloud features. Once prepared, document processing does not need an internet connection. It does not set up a Windows startup task. Ollama can remain in the background; model memory is released after inactivity.
 
-O Ollama roda em segundo plano em `127.0.0.1:11434`. O inicializador desabilita recursos de nuvem e o histórico interativo. O processo pode permanecer em segundo plano depois de fechar o site; o modelo é descarregado da memória após inatividade. Não inicia automaticamente com o Windows.
+On Linux/macOS, install [Ollama](https://ollama.com/download) first, then run `python3 iniciar.py`.
 
-Em Linux/macOS, instale o Ollama pelo [site oficial](https://ollama.com/download), depois execute `python3 iniciar.py`.
+### Manual setup
 
-## Usar
-
-1. Selecione um currículo PDF com texto selecionável.
-2. Cole a descrição completa da vaga e clique em **Analisar com IA**.
-3. Abra um requisito para ver a explicação, a evidência com página e a sugestão. Use **Mostrar** para filtrar categorias.
-4. Em **Perguntar à IA**, faça uma pergunta, por exemplo: “O que posso explicar melhor?”.
-5. **Limpar** remove o arquivo selecionado, a vaga e os resultados da tela.
-
-A seção **Testar com um exemplo** fornece um currículo e uma vaga fictícios. Não inclua currículos reais no repositório. Cada pergunta é independente e recebe novamente o currículo e a vaga; o servidor não guarda conversa ou histórico.
-
-## Como funciona
-
-```text
-HTML/CSS/JavaScript
-  -> FastAPI recebe PDF + vaga
-  -> pypdf extrai texto por página, em memória
-  -> API local do Ollama executa o Qwen3 4B Instruct
-  -> Pydantic valida a resposta JSON
-  -> Backend confere requisitos e citações nos textos originais
-  -> Interface mostra categorias, evidências e sugestões
+```powershell
+py -3.11 -m venv .venv
+.venv\Scripts\python.exe -m pip install -r requirements.txt
 ```
 
-O código usa uma API de IA real, servida localmente por Ollama. A comparação no modo padrão não é por palavras-chave. A configuração do modelo exige resposta conforme JSON Schema e desabilita o raciocínio visível para reduzir tempo e tamanho da resposta.
+Then use the launcher. To start everything manually instead, install and start Ollama, prepare the models, and run:
 
-O servidor rejeita citações/páginas inexistentes, requisitos inventados, classificações conflitantes e classificação positiva sem evidência. Requisitos repetidos com a mesma categoria são agrupados, reunindo citações verificadas e preservando a ordem da vaga. Frases com negação não são aceitas como prova positiva de qualificação. Mudanças de espaço ou quebra de linha são aceitas, mas a citação apresentada é o trecho original extraído. As sugestões da análise são modelos condicionais do servidor; não preenchem qualificações novas.
+```powershell
+ollama pull qwen3:4b-instruct-2507-q4_K_M
+.venv\Scripts\python.exe -c "from app.ocr_model import ensure_ocr_model; ensure_ocr_model()"
+.venv\Scripts\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --no-access-log
+```
 
-Se a análise local viola essas regras, o servidor pede uma única correção ao modelo e confere tudo novamente. Se continuar inválida, retorna um erro e não mostra a análise. As duas tentativas compartilham o limite total de 180 segundos. Essa correção é exclusiva do modo local gratuito; não gera chamadas à OpenAI.
+## Try it
 
-Uma citação verdadeira ainda pode ser interpretada incorretamente. Explicações e respostas são geradas por IA e exigem revisão humana. “Não encontrado” significa falta de evidência no texto recebido, não ausência de conhecimento.
+1. Open **Try an example**, download the fictional resume, and select it in the upload field.
+2. Use **fill the sample job**, then select **Analyze resume**.
+3. Expand a requirement to inspect its original excerpts, or filter the categories.
+4. Ask a short follow-up question, such as **What evidence is missing for Python?**
+5. Use **Clear** to remove the file selection, inputs and results from the page.
 
-## Organização
+The included PDF is deliberately simple: Java/OOP, SQL exercises, and a web interface. It does not claim PostgreSQL, Python or FastAPI experience.
 
-| Arquivo | Responsabilidade |
+## How it works
+
+```text
+Resume PDF/image + job description
+              |
+      Text extraction / local OCR
+              |
+      Numbered source sections
+              |
+      Ollama selects source IDs and categories
+              |
+      Server resolves IDs to original excerpts
+              |
+      Results and conditional suggestions
+```
+
+The local model is `qwen3:4b-instruct-2507-q4_K_M`. It returns compact JSON with source references instead of rewriting quotations. A single model request is used for an analysis; there is no second repair pass or paid fallback.
+
+The server controls the displayed excerpts and page numbers. It excludes unknown references and negative statements from positive evidence, groups duplicate requirements, and uses the more conservative category when duplicates disagree. A small check for common named technologies prevents, for example, SQL-only evidence from satisfying SQL **and** PostgreSQL. These checks do not prove semantic correctness for every requirement.
+
+Follow-up answers are generated by the model in English, with source IDs resolved to original resume excerpts. Original excerpts retain the language of the document.
+
+### Project structure
+
+| Path | Purpose |
 | --- | --- |
-| `iniciar.py` | Preparar runtime/modelo e iniciar o site local |
-| `app/main.py` | Rotas HTTP e entrega da interface |
-| `app/config.py` | Provedor e configuração privada |
-| `app/ai_service.py` | Chamadas à IA, instruções e validação das evidências |
-| `app/models.py` | Contratos estruturados com Pydantic |
-| `app/uploads.py` | Envio multipart em memória, com limite de tamanho |
-| `app/pdf_reader.py` | Extração e validação do PDF |
-| `app/static/` | Interface em HTML, CSS e JavaScript |
-| `app/analyzer.py` | Comparador de palavras-chave usado somente no modo demo explícito |
-| `tests/` | Testes locais sem dependência de um modelo real |
+| `app/main.py` | FastAPI routes and error stages |
+| `app/pdf_reader.py` | In-memory document reading, PDF rendering and OCR |
+| `app/ocr_model.py` | Checksum-verified OCR model setup |
+| `app/sources.py` | Source references and conservative text checks |
+| `app/ai_service.py` | Compact local model requests and evidence resolution |
+| `app/models.py` | Pydantic response contracts |
+| `app/uploads.py` | Bounded multipart uploads without disk spooling |
+| `app/static/` | Plain HTML, CSS and JavaScript interface |
+| `examples/` | Fictional sample data |
+| `tests/` | Automated tests with a simulated AI transport |
+| `iniciar.py` | Local setup and launcher |
 
 ## API
 
-- `GET /api/health`: informa o modo, o modelo e se a API local está disponível com o modelo instalado. Não afirma qualidade da análise nem devolve chaves.
-- `POST /api/analyze`: multipart com `resume` (PDF) e `job_description` (texto). Retorna `mode`, `notice` e `results`.
-- `POST /api/ask`: os mesmos campos mais `question`. Retorna `answer`, `evidence` e `mode`.
-- `GET /openapi.json`: esquema das respostas.
+| Endpoint | Request / response |
+| --- | --- |
+| `GET /api/health` | Local service and model availability; never calls a paid provider |
+| `POST /api/analyze` | Multipart `resume` + `job_description`; categories, excerpts, OCR information and elapsed time |
+| `POST /api/ask` | Same fields + `question`; a short answer with excerpts |
+| `GET /openapi.json` | Response schemas |
 
-Exemplo de item da análise:
+Errors contain a readable `detail`. Document-reading errors have `stage: document`, model/service errors have `stage: ai`, OCR setup failures have `stage: ocr`, and job-section validation errors have `stage: job`. An AI or OCR setup error does not mean that the resume file is invalid.
 
-```json
-{
-  "requirement": "SQL e PostgreSQL",
-  "status": "parcialmente_atendido",
-  "evidence": [{"page": 1, "quote": "Exercicios de consultas SQL em banco de dados."}],
-  "explanation": "Há SQL, mas não há evidência de PostgreSQL.",
-  "suggestion": "Revise o que falta comprovar e acrescente somente exemplos de experiências que você realmente possui."
-}
-```
-
-Erros: entrada/PDF inválido (422), envio grande demais (413), IA desligada/modelo ausente (503), timeout (504) e resposta inválida (502). Não há troca automática para um serviço pago.
-
-## Testes
+## Tests and validation
 
 ```powershell
 .venv\Scripts\python.exe -m pip install -r requirements-dev.txt
 .venv\Scripts\python.exe -m pytest -q
 ```
 
-**57 testes automatizados passaram em 13/11/2026.** Eles não fazem chamadas reais à OpenAI ou ao Ollama: usam transporte HTTP simulado para testar os contratos, rotas e validações sem custo e sem depender do hardware.
+Automated tests cover uploads, digital and scanned document paths, image inputs, OCR failures, source reference integrity, categories, negation, duplicate results, named technology checks and clear error stages. They simulate the model transport and do not require a model to be running.
 
-Cobertura: três categorias, páginas/citações, requisitos e evidências inventados, classificação sem prova, PDFs inválidos/vazios/com senha, limites de envio, ausência de arquivo temporário, perguntas, mensagens de erro, timeout, truncamento de saída, modo local sem fallback pago, configuração ausente e separação de dados/instruções.
+Real local inference, OCR and timing checks are recorded separately in [VALIDATION.md](VALIDATION.md). Results depend on hardware, document quality and model interpretation. Test data in this repository is fictional; private resumes are not included.
 
-A validação com o modelo real é registrada separadamente em [VALIDACAO.md](VALIDACAO.md). Não confunda HTTP simulado com inferência real.
+## Privacy and limitations
 
-## Privacidade e limites
+- **No database or persistent analysis history.** Uploads, extracted text and results are not saved by the app. OCR and inference run locally.
+- Model weights and technical runtime logs occupy disk. Logs do not intentionally contain uploaded document contents. Runtime/model caches may keep data in memory; clearing the page is not secure memory erasure.
+- Files: PDF, PNG or JPG, up to 5 MB. PDFs: up to 10 pages. Extracted text: up to 40,000 characters. Job description: up to 12,000 characters. Questions: up to 1,000 characters.
+- The AI context window may be smaller than the maximum document limits. Long inputs receive an error instead of being silently truncated.
+- OCR can misread small, blurry, rotated or complex layouts. Review the displayed excerpts. Different OCR output can change the comparison.
+- Valid source references prevent invented quotations; they do **not** guarantee correct classifications, complete requirement coverage, or truthful resume claims.
+- No hiring score, probability, ranking or automatic qualification additions.
+- Designed for a local demo on `127.0.0.1`. Public hosting, authentication and production resource isolation are outside this basic version.
+- Requires local compute. The model is Apache 2.0 licensed; see the [official model page](https://ollama.com/library/qwen3:4b-instruct-2507-q4_K_M). OCR uses [RapidOCR](https://github.com/RapidAI/RapidOCR); PDF rendering uses [pypdfium2](https://pypdfium2.readthedocs.io/).
 
-- Sem banco, histórico ou analytics. O PDF e os resultados ficam em memória durante o uso; o botão **Limpar** remove os dados da tela.
-- Sem gravação de currículo pela aplicação. O limite de upload fica abaixo do limite de escrita temporária do parser. O descarte em memória não é apagamento criptográfico.
-- No modo local, a API é fixa em `127.0.0.1:11434`, com o modelo `qwen3:4b-instruct-2507-q4_K_M`. O aplicativo não usa serviço de nuvem nem exige chave.
-- O inicializador usa o Ollama oficial `0.40.16` com `OLLAMA_NO_CLOUD=1` e `OLLAMA_NOHISTORY=1`. Modelos, bibliotecas e logs técnicos ocupam disco; currículos não são incluídos nesses arquivos pela aplicação.
-- PDF de até 5 MB, 10 páginas e 40 mil caracteres extraídos. Vaga de 3 a 12 mil caracteres. Pergunta de 3 a 1.000 caracteres. Até 30 requisitos por análise.
-- Não faz OCR e rejeita PDFs com senha. Colunas e layouts complexos podem alterar a extração.
-- A velocidade e a qualidade dependem do hardware e do modelo. A primeira análise precisa carregar o modelo; PDFs grandes podem demorar ou exceder a janela de contexto do modelo local. Não há garantia de correção semântica ou cobertura de todos os requisitos.
-- Não calcula nota, probabilidade, ranking ou decisão de contratação. Não comprova a veracidade de um currículo.
-- Uso em `127.0.0.1`. Antes de publicar: isolamento do parser com limites de CPU/memória, timeout de extração, controle de acesso e limites de concorrência. Hospedagem com IA local precisa de recursos de computação próprios; não foi publicada nesta etapa.
-- Qwen3 4B Instruct tem licença Apache 2.0. O pacote e os modelos são obtidos das fontes oficiais; não ficam versionados no repositório.
+## Portfolio explanation
 
-## Provedores opcionais
+> I built a small FastAPI application that reads resumes, uses a local language model to compare them with jobs, and resolves source IDs to original evidence. I added OCR for scanned inputs, avoided storing uploads, and tested both the API contracts and real inference. The main trade-off is local speed and model accuracy; evidence integrity does not replace human review.
 
-O padrão é `VAGAMATCH_MODE=ollama`. `iniciar.py` força esse modo e desabilita o uso pago.
-
-Para estudar o fluxo de palavras-chave, use `VAGAMATCH_MODE=demo` ao iniciar o Uvicorn diretamente. A interface identifica a demonstração e não oferece perguntas à IA.
-
-A integração anterior com OpenAI foi preservada, porém não está ativa. Para usá-la no futuro é necessário decidir explicitamente sobre custos, configurar uma chave privada e iniciar o Uvicorn diretamente com o modo `openai`. Não há fallback automático. As condições e preços precisam ser revisados antes de ativar. `configurar_api.py` continua disponível apenas para essa alternativa paga.
-
-## Para explicar em entrevista
-
-“Construí uma API FastAPI que recebe um currículo PDF e uma descrição de vaga, extrai o texto e consulta uma API de IA local. O modelo responde em JSON estruturado, e o servidor confere se as citações existem nas páginas indicadas. A interface permite filtrar requisitos e fazer perguntas. Escolhi o modo local para evitar cobrança de API e não enviar currículos para terceiros. Separei extração, integração e apresentação para permitir a troca do provedor. Testei as validações com HTTP simulado e verifico a inferência real separadamente.”
-
-## Próximas etapas
-
-1. Avaliar a qualidade com exemplos fictícios e anonimizados, incluindo negações e requisitos ausentes.
-2. Expandir os exemplos de avaliação no repositório, usando apenas dados fictícios ou anonimizados.
-3. Validar uma forma de hospedagem antes de publicar a aplicação.
-4. Considerar PostgreSQL em outra versão, com decisão sobre retenção e consentimento.
-
-Referências: [API do Ollama](https://docs.ollama.com/api/chat), [respostas estruturadas](https://docs.ollama.com/capabilities/structured-outputs), [Qwen3 4B Instruct](https://ollama.com/library/qwen3:4b-instruct-2507-q4_K_M), [FastAPI](https://fastapi.tiangolo.com/), [pypdf](https://pypdf.readthedocs.io/en/stable/user/extract-text.html).
+Built by [Eliese](https://github.com/lezeeee). Source: [lezeeee/vagamatch-ai](https://github.com/lezeeee/vagamatch-ai).
